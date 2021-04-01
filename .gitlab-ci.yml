@@ -1,0 +1,51 @@
+# Pipeline Image
+image: jakzal/phpqa:php7.4
+
+# For make that our tests works we have to make a composer install
+before_script:
+  - composer install
+# For optimisation we add cache on vendor
+cache:
+  paths:
+    - vendor/
+
+# Cut our pipeline in 3 steps
+stages:
+  - SecurityChecker
+  - CodingStandards
+  - UnitTests
+
+# Check the securities breachs and don't allow the failure to continue
+security-checker:
+  stage: SecurityChecker
+  script:
+    - security-checker security:check composer.lock
+  allow_failure: false
+
+
+# Check the PSR-12 coding rules with PHP CS
+phpcs:
+  stage: CodingStandards
+  script:
+    - phpcs -v --standard=PSR12 --ignore=./src/Kernel.php ./src
+  allow_failure: false
+# Scan with PHP Stan our src folder
+phpstan:
+  stage: CodingStandards
+  script:
+    - phpstan analyse ./src
+  allow_failure: false
+
+# Scan with PHP Stan our template
+twig-lint:
+  stage: CodingStandards
+  script:
+    - twig-lint lint ./templates
+  allow_failure: false
+
+# Unit test
+phpunit:
+  stage: UnitTests
+  script:
+    - php bin/phpunit
+  allow_failure: false
