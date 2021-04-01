@@ -1,51 +1,27 @@
-# Pipeline Image
-image: jakzal/phpqa:php7.4
+image: php:7.4-cli
 
-# For make that our tests works we have to make a composer install
 before_script:
+  - apt-get update && apt-get install -y git libzip-dev npm wget
+  - curl -sSk https://getcomposer.org/installer | php -- --disable-tls && mv composer.phar /usr/local/bin/composer
+  - docker-php-ext-install zip
+  - wget https://get.symfony.com/cli/installer -O - | bash
+  - mv /root/.symfony/bin/symfony /usr/local/bin/symfony
+  - npm install -g newman
   - composer install
-# For optimisation we add cache on vendor
+  - mv ./config/jwt/private_test.pem ./config/jwt/private.pem && mv ./config/jwt/public_test.pem ./config/jwt/public.pem
+  - symfony server:ca:install && symfony serve -d
+  - php bin/console doctrine:database:create --env=test
+  - php bin/console doctrine:migration:migrate --env=test --no-interaction
+
 cache:
   paths:
     - vendor/
 
-# Cut our pipeline in 3 steps
 stages:
-  - SecurityChecker
-  - CodingStandards
-  - UnitTests
+  - TestAPI
 
-# Check the securities breachs and don't allow the failure to continue
-security-checker:
-  stage: SecurityChecker
+Newman:
+  stage: TestAPI
   script:
-    - security-checker security:check composer.lock
-  allow_failure: false
-
-
-# Check the PSR-12 coding rules with PHP CS
-phpcs:
-  stage: CodingStandards
-  script:
-    - phpcs -v --standard=PSR12 --ignore=./src/Kernel.php ./src
-  allow_failure: false
-# Scan with PHP Stan our src folder
-phpstan:
-  stage: CodingStandards
-  script:
-    - phpstan analyse ./src
-  allow_failure: false
-
-# Scan with PHP Stan our template
-twig-lint:
-  stage: CodingStandards
-  script:
-    - twig-lint lint ./templates
-  allow_failure: false
-
-# Unit test
-phpunit:
-  stage: UnitTests
-  script:
-    - php bin/phpunit
+    - newman run ./postman/postman_collection.json -e ./postman/postman_environment.json
   allow_failure: false
