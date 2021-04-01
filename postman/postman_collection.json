@@ -98,7 +98,7 @@
 							"pm.environment.set(\"token\", pm.response.json().token);\r",
 							"\r",
 							"pm.test(\"Status test\", function () {\r",
-							"    pm.response.to.have.status(201);\r",
+							"    pm.response.to.have.status(200);\r",
 							"});"
 						],
 						"type": "text/javascript"
